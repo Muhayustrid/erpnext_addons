@@ -234,7 +234,9 @@ class TestItemGroupSeries(IntegrationTestCase):
 			"stock_uom": "Nos",
 		}).insert(ignore_permissions=True)
 
-		self.assertEqual(doc.naming_series, "BB.YY..####.")
+		# admins may edit the seeded value; expect whatever the group holds
+		expected = frappe.db.get_value("Item Group", "Bahan Baku", "custom_naming_series")
+		self.assertEqual(doc.naming_series, expected)
 		self.assertTrue(doc.name.startswith("BB26") or "BB" in doc.name)
 
 		dynamic_group = "_Test Group Dynamic Series"
@@ -290,7 +292,7 @@ class TestStockEntrySeries(IntegrationTestCase):
 
 	def test_e2e_insert_uses_type_series(self):
 		company = frappe.get_all("Company", pluck="name", limit=1)
-		items = frappe.get_all("Item", pluck="name", limit=2)
+		items = frappe.get_all("Item", filters={"is_stock_item": 1, "disabled": 0, "has_variants": 0}, pluck="name", limit=2)
 		warehouses = frappe.get_all(
 			"Warehouse",
 			filters={"is_group": 0, "company": company[0]} if company else {"is_group": 0},
