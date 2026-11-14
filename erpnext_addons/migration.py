@@ -86,4 +86,7 @@ def _set_owner(module_name, app_name):
 
 
 def _old_app_code_available():
-	return importlib.util.find_spec(f"{OLD_APP}.stock_entry_series.doctype.naming_series_map") is not None
+	try:
+		return importlib.util.find_spec(f"{OLD_APP}.stock_entry_series.doctype.naming_series_map") is not None
+	except ModuleNotFoundError:  # find_spec raises, not returns None, when the parent package is gone
+		return False

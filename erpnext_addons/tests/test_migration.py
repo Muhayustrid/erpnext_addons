@@ -107,6 +107,15 @@ class TestHandBack(MigrationCase):
 				migration.hand_back_naming_series_map()
 		self.assertEqual(self.owner(), "ERPNext Add-ons")
 
+	def test_missing_old_package_refuses_cleanly(self):
+		# real check, not mocked: the old package is not importable on this host
+		with mock.patch.object(migration, "OLD_APP", "no_such_app"):
+			self.f.installed_apps.append("no_such_app")
+			self.assertFalse(migration._old_app_code_available())
+			with self.assertRaises(FakeValidationError):
+				migration.hand_back_naming_series_map()
+		self.assertEqual(self.owner(), "ERPNext Add-ons")
+
 	def test_raises_when_read_back_differs(self):
 		with mock.patch.object(migration, "_old_app_code_available", return_value=True):
 			with mock.patch.object(self.f.db, "set_value"):
