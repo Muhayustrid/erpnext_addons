@@ -17,10 +17,17 @@ OLD_MODULE, OLD_APP = "Stock Entry Series", "stock_entry_series"
 
 def after_sync():
 	_seed_then_take_over()
+	# install-app marks every patch as done, so a fresh install backfills here instead
+	from erpnext_addons.patches.v1_0 import backfill_intercompany_progress
+
+	backfill_intercompany_progress.execute()
 
 
 def after_migrate():
 	_seed_then_take_over()
+	from erpnext_addons.intercompany.setup import ensure_fields
+
+	ensure_fields()
 
 
 def _seed_then_take_over():

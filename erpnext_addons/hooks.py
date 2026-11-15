@@ -15,10 +15,30 @@ doctype_js = {
 	"Purchase Order": "public/js/order_update_pricing.js",
 }
 
+app_include_js = ["/assets/erpnext_addons/js/list_settings_columns.js"]
+
+_IC_PROGRESS_EVENTS = {
+	"on_change": "erpnext_addons.intercompany.events.on_change",
+	"before_cancel": "erpnext_addons.intercompany.events.before_cancel",
+	"before_validate": "erpnext_addons.intercompany.events.guard",
+	"before_update_after_submit": "erpnext_addons.intercompany.events.guard",
+}
+
 doc_events = {
 	"Item": {"before_insert": "erpnext_addons.overrides.item.set_naming_series"},
 	"Stock Entry": {"before_insert": "erpnext_addons.overrides.stock_entry.set_naming_series"},
 	"Material Request": {"before_insert": "erpnext_addons.overrides.material_request.set_naming_series"},
+	**{
+		dt: dict(_IC_PROGRESS_EVENTS)
+		for dt in (
+			"Purchase Order",
+			"Sales Order",
+			"Delivery Note",
+			"Purchase Receipt",
+			"Sales Invoice",
+			"Purchase Invoice",
+		)
+	},
 }
 
 fixtures = [

@@ -9,6 +9,11 @@ General ERPNext v16 enhancements for Roti Ropi. Replaces `intercompany_sync`
 - **Item naming series per Item Group** (`Item Group.custom_naming_series`).
 - **Stock Entry naming series per Stock Entry Type** (`Stock Entry Type.custom_naming_series`).
 - **Material Request naming series per type** via the `Naming Series Map` DocType.
+- **Intercompany Progress** on PO, SO, DN, PR, SI and PI (returns included): five
+  system-only checkboxes (`Ordered`, `Delivered`, `Received`, `Sales Invoiced`,
+  `Purchase Invoiced`) and a `Next Step` list column, the same for every document
+  in a chain. Native statuses are untouched.
+- **List Settings column order** always wins over Frappe list layout columns.
 
 Seeds only fill empty values; admin configuration is never overwritten.
 
