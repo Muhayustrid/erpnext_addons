@@ -48,7 +48,13 @@ class TestHooks(unittest.TestCase):
 			{"Item", "Stock Entry", "Material Request", "Sales Order", "Purchase Order"},
 		)
 		self.assertEqual(hooks.doctype_js["Sales Order"], "public/js/order_update_pricing.js")
-		self.assertEqual(hooks.doctype_js["Purchase Order"], "public/js/order_update_pricing.js")
+		self.assertEqual(
+			hooks.doctype_js["Purchase Order"],
+			[
+				"public/js/order_update_pricing.js",
+				"public/js/purchase_order_get_material_request.js",
+			],
+		)
 		naming = {"Item", "Stock Entry", "Material Request"}
 		self.assertEqual(set(hooks.doc_events), naming | IC_DOCTYPES)
 		for dt in naming:

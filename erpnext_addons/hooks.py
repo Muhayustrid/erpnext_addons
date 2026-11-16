@@ -12,7 +12,10 @@ doctype_js = {
 	"Stock Entry": "public/js/stock_entry_form.js",
 	"Material Request": "public/js/material_request_form.js",
 	"Sales Order": "public/js/order_update_pricing.js",
-	"Purchase Order": "public/js/order_update_pricing.js",
+	"Purchase Order": [
+		"public/js/order_update_pricing.js",
+		"public/js/purchase_order_get_material_request.js",
+	],
 }
 
 app_include_js = ["/assets/erpnext_addons/js/list_settings_columns.js"]
