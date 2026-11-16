@@ -62,6 +62,8 @@
 	}
 
 	function add_mr_button(frm) {
+		// New-style frappe.ui.form.on handlers run before ERPNext's cscript refresh, so our button
+		// already wins by being registered first; removing the native one is only a safety net.
 		frm.remove_custom_button(__("Material Request"), __("Get Items From"));
 		frm.add_custom_button(
 			__("Material Request"),
@@ -91,16 +93,22 @@
 			action(selections) {
 				// the dialog calls action with itself as this: hide the picker behind the confirmation
 				this?.dialog?.hide();
-				return start_amendment(frm, selections);
+				// a server refusal already shows its own error dialog, so swallow it to keep the console clean
+				return start_amendment(frm, selections).catch(() => {});
 			},
 		};
 	}
 
 	function start_amendment(frm, selected) {
+		if (!selected || !selected.length) {
+			frappe.msgprint(__("Pilih dulu Material Request-nya."));
+			return Promise.resolve(null);
+		}
+
 		return new Promise((resolve, reject) => {
 			frappe.confirm(
 				__(
-					"Purchase Order {0} akan di-cancel dan nomornya berganti menjadi versi amendannya. Item dari Material Request yang dipilih masuk ke draft amend tersebut, jadi periksa draftnya lalu submit.",
+					"Purchase Order {0} akan di-cancel dan nomornya berganti menjadi versi amendannya. Item dari Material Request yang dipilih masuk ke draft amend tersebut, jadi periksa draftnya lalu submit. Draft ini baru menutup Material Request setelah kamu submit.",
 					[frm.doc.name]
 				),
 				() => {
@@ -136,6 +144,20 @@
 		);
 	}
 
+	// mirrors the server guard so the button never shows on a PO that would be refused
+	function can_amend(frm) {
+		return (
+			frm.doc.docstatus === 1 &&
+			!frm.doc.inter_company_order_reference &&
+			!frm.doc.is_subcontracted &&
+			!flt(frm.doc.per_received) &&
+			!flt(frm.doc.per_billed) &&
+			!["Closed", "Completed", "On Hold", "Cancelled"].includes(frm.doc.status) &&
+			frm.has_perm("cancel") &&
+			frm.has_perm("create")
+		);
+	}
+
 	function init() {
 		if (typeof frappe === "undefined" || !frappe.ui || !frappe.ui.form) {
 			return false;
@@ -145,7 +167,7 @@
 			refresh(frm) {
 				if (frm.doc.docstatus === 0) {
 					add_mr_button(frm);
-				} else if (frm.doc.docstatus === 1 && !frm.doc.inter_company_order_reference) {
+				} else if (can_amend(frm)) {
 					add_amendment_button(frm);
 				}
 			},

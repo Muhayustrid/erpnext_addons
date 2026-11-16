@@ -36,6 +36,7 @@ test("maps header links to their doctypes", () => {
 
 	const docs = mod.collect_related_docs({
 		work_order: "WO-1",
+		subcontracting_order: "SCO-1",
 		purchase_receipt_no: "PR-1",
 		outgoing_stock_entry: "STE-2",
 	});
@@ -43,6 +44,7 @@ test("maps header links to their doctypes", () => {
 	assert.deepEqual(docs, [
 		{ doctype: "Work Order", name: "WO-1" },
 		{ doctype: "Stock Entry", name: "STE-2" },
+		{ doctype: "Subcontracting Order", name: "SCO-1" },
 		{ doctype: "Purchase Receipt", name: "PR-1" },
 	]);
 });

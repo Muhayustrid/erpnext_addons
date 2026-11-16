@@ -4,6 +4,7 @@ Unit classes run anywhere against FakeFrappe. The integration class needs a real
 site (`bench run-tests`) and skips otherwise.
 """
 
+import json
 import unittest
 from contextlib import suppress
 from unittest import mock
@@ -36,6 +37,10 @@ class AmendBlockerCase(unittest.TestCase):
 	def test_refuses_intercompany_po(self):
 		po = new_doc(name="PO-1", docstatus=1, inter_company_order_reference="PO-2")
 		self.assertIn("intercompany", amendment.amend_blocker(po))
+
+	def test_refuses_subcontracted_po(self):
+		po = new_doc(name="PO-1", docstatus=1, inter_company_order_reference=None, is_subcontracted=1)
+		self.assertIn("subkontrak", amendment.amend_blocker(po))
 
 
 class AssertCanAmendCase(unittest.TestCase):
@@ -71,6 +76,47 @@ class AssertCanAmendCase(unittest.TestCase):
 		self.f.add("Purchase Order", "PO-2", amended_from="PO-1", docstatus=0)
 		self.assert_refused("sudah pernah di-amend")
 
+	def test_refuses_submitted_payment_entry(self):
+		self.f.add(
+			"Payment Entry Reference",
+			"PER-1",
+			parent="PE-1",
+			reference_doctype="Purchase Order",
+			reference_name="PO-1",
+			docstatus=1,
+		)
+		self.assert_refused("Payment Entry PE-1")
+
+	def test_refuses_submitted_journal_entry(self):
+		self.f.add(
+			"Journal Entry Account",
+			"JEA-1",
+			parent="JE-1",
+			reference_type="Purchase Order",
+			reference_name="PO-1",
+			docstatus=1,
+		)
+		self.assert_refused("Journal Entry JE-1")
+
+	def test_passes_cancelled_or_foreign_references(self):
+		self.f.add(
+			"Payment Entry Reference",
+			"PER-1",
+			parent="PE-1",
+			reference_doctype="Purchase Order",
+			reference_name="PO-1",
+			docstatus=2,
+		)
+		self.f.add(
+			"Journal Entry Account",
+			"JEA-1",
+			parent="JE-1",
+			reference_type="Purchase Order",
+			reference_name="PO-9",
+			docstatus=1,
+		)
+		amendment.assert_can_amend(self.po)
+
 	def test_passes_clean_po(self):
 		self.f.add("Purchase Receipt Item", "PRI-1", purchase_order="PO-9", docstatus=1)
 		amendment.assert_can_amend(self.po)
@@ -90,6 +136,46 @@ class UniqueMaterialRequestsCase(unittest.TestCase):
 
 	def test_drops_empty_values(self):
 		self.assertEqual(amendment.unique_material_requests(["", None, "A"]), ["A"])
+
+
+class MaterialRequestBlockerCase(unittest.TestCase):
+	def setUp(self):
+		self.po = new_doc(name="PO-1", company="Roti Ropi")
+
+	def mr(self, **values):
+		row = {
+			"name": "MREQ-1",
+			"material_request_type": "Purchase",
+			"company": "Roti Ropi",
+			"docstatus": 1,
+			"status": "Pending",
+			"per_ordered": 0,
+		}
+		row.update(values)
+		return row
+
+	def test_passes_orderable_material_request(self):
+		self.assertIsNone(amendment.material_request_blocker(self.mr(), self.po))
+
+	def test_refuses_missing_material_request(self):
+		self.assertIn("tidak ditemukan", amendment.material_request_blocker(None, self.po))
+
+	def test_refuses_non_purchase_material_request(self):
+		self.assertIn(
+			"Purchase", amendment.material_request_blocker(self.mr(material_request_type="Material Transfer"), self.po)
+		)
+
+	def test_refuses_other_company(self):
+		self.assertIn("company lain", amendment.material_request_blocker(self.mr(company="Other"), self.po))
+
+	def test_refuses_draft_material_request(self):
+		self.assertIn("belum submitted", amendment.material_request_blocker(self.mr(docstatus=0), self.po))
+
+	def test_refuses_stopped_material_request(self):
+		self.assertIn("Stopped", amendment.material_request_blocker(self.mr(status="Stopped"), self.po))
+
+	def test_refuses_fully_ordered_material_request(self):
+		self.assertIn("sudah dipesan", amendment.material_request_blocker(self.mr(per_ordered=100), self.po))
 
 
 class AssertNewMaterialRequestsCase(unittest.TestCase):
@@ -128,6 +214,23 @@ class CreateAmendmentCase(unittest.TestCase):
 		with self.assertRaises(FakeValidationError) as ctx:
 			amendment.create_amendment_for_material_request("PO-1", "[]")
 		self.assertIn("Material Request", str(ctx.exception))
+
+	def test_refuses_material_requests_that_are_not_a_list(self):
+		self.f.parse_json = lambda value: {"MREQ-1": True}
+		with self.assertRaises(FakeValidationError) as ctx:
+			amendment.create_amendment_for_material_request("PO-1", '{"MREQ-1": true}')
+		self.assertIn("tidak valid", str(ctx.exception))
+
+	def test_refuses_intercompany_po_before_cancelling(self):
+		self.f.parse_json = json.loads
+		po = self.f.db.tables["Purchase Order"]["PO-1"]
+		po["inter_company_order_reference"] = "PO-2"
+		po["cancel"] = mock.Mock()
+
+		with self.assertRaises(FakeValidationError):
+			amendment.create_amendment_for_material_request("PO-1", '["MREQ-1"]')
+
+		po["cancel"].assert_not_called()
 
 
 SUPPLIER = "_Test Supplier PO Amendment"

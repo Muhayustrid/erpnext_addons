@@ -6,9 +6,10 @@ const METHOD = "erpnext_addons.buying.amendment.create_amendment_for_material_re
 
 function load({ doc, decline = false, xcall_failure } = {}) {
 	const handlers = {};
-	const calls = { confirm: [], xcall: [], set_route: [], dialogs: [] };
+	const calls = { confirm: [], xcall: [], set_route: [], dialogs: [], msgprint: [] };
 
 	global.__ = (s) => s;
+	global.flt = (value) => Number.parseFloat(value) || 0;
 	global.frappe = {
 		ui: {
 			form: {
@@ -30,6 +31,7 @@ function load({ doc, decline = false, xcall_failure } = {}) {
 			return xcall_failure ? Promise.reject(xcall_failure) : Promise.resolve("PO-1-1");
 		},
 		set_route: (...args) => calls.set_route.push(args),
+		msgprint: (message) => calls.msgprint.push(message),
 	};
 	global.erpnext = { utils: { map_current_doc: () => ({ get_datatable_columns: () => [], init() {} }) } };
 
@@ -41,6 +43,7 @@ function load({ doc, decline = false, xcall_failure } = {}) {
 		calls: [],
 		add_custom_button: (...args) => frm.calls.push(["add", ...args]),
 		remove_custom_button: (...args) => frm.calls.push(["remove", ...args]),
+		has_perm: () => true,
 	};
 	return { mod, handlers, calls, frm };
 }
@@ -121,8 +124,41 @@ test("submitted non-intercompany PO shows the button, intercompany does not", ()
 		},
 	});
 
-	const intercompany = load({ doc: { inter_company_order_reference: "PO-1-1" } });
-	intercompany.handlers["Purchase Order"].refresh(intercompany.frm);
+	for (const doc of [{ inter_company_order_reference: "PO-1-1" }, { is_subcontracted: 1 }]) {
+		const refused = load({ doc });
+		refused.handlers["Purchase Order"].refresh(refused.frm);
 
-	assert.deepEqual(intercompany.frm.calls, []);
+		assert.deepEqual(refused.frm.calls, []);
+	}
+});
+
+test("a received or billed PO shows no amendment button", () => {
+	for (const doc of [{ per_received: 100 }, { per_billed: 100 }]) {
+		const { handlers, frm } = load({ doc });
+
+		handlers["Purchase Order"].refresh(frm);
+
+		assert.deepEqual(frm.calls, []);
+	}
+});
+
+test("empty selection asks for a Material Request instead of confirming", async () => {
+	const { mod, calls, frm } = load();
+
+	const result = await mod.start_amendment(frm, []);
+
+	assert.equal(result, null);
+	assert.deepEqual(calls.msgprint, ["Pilih dulu Material Request-nya."]);
+	assert.deepEqual(calls.confirm, []);
+	assert.deepEqual(calls.xcall, []);
+});
+
+test("the dialog action swallows a server refusal", async () => {
+	const reason = "Purchase Order ini sudah punya Purchase Receipt submitted, jadi tidak bisa di-amend.";
+	const { mod, calls, frm } = load({ xcall_failure: reason });
+
+	await mod.amendment_dialog_opts(frm).action(["MREQ-1"]);
+
+	assert.equal(calls.xcall.length, 1);
+	assert.deepEqual(calls.set_route, []);
 });

@@ -22,6 +22,7 @@
 		source_stock_entry: "Stock Entry",
 		outgoing_stock_entry: "Stock Entry",
 		purchase_order: "Purchase Order",
+		subcontracting_order: "Subcontracting Order",
 		purchase_receipt_no: "Purchase Receipt",
 		delivery_note_no: "Delivery Note",
 		sales_invoice_no: "Sales Invoice",
