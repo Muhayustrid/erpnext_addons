@@ -27,6 +27,18 @@ def get_series_for_type(material_request_type):
 	return series or SERIES_MAP.get(material_request_type, DEFAULT_SERIES)
 
 
+def set_requested_by(doc, method=None):
+	"""Fill Requested By with the creator's full name before insert.
+
+	The field is read-only, so an explicitly filled value (Data Import) is kept.
+	"""
+	if doc.get("custom_requested_by"):
+		return
+
+	user = doc.owner or frappe.session.user
+	doc.custom_requested_by = frappe.db.get_value("User", user, "full_name") or user
+
+
 def set_naming_series(doc, method=None):
 	"""Set doc.naming_series based on material_request_type before insert.
 

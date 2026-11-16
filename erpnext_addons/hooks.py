@@ -27,7 +27,12 @@ _IC_PROGRESS_EVENTS = {
 doc_events = {
 	"Item": {"before_insert": "erpnext_addons.overrides.item.set_naming_series"},
 	"Stock Entry": {"before_insert": "erpnext_addons.overrides.stock_entry.set_naming_series"},
-	"Material Request": {"before_insert": "erpnext_addons.overrides.material_request.set_naming_series"},
+	"Material Request": {
+		"before_insert": [
+			"erpnext_addons.overrides.material_request.set_naming_series",
+			"erpnext_addons.overrides.material_request.set_requested_by",
+		]
+	},
 	**{
 		dt: dict(_IC_PROGRESS_EVENTS)
 		for dt in (

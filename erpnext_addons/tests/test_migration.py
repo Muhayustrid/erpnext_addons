@@ -12,6 +12,7 @@ from erpnext_addons.buying import setup as buying_setup
 from erpnext_addons.intercompany import setup as ic_setup
 from erpnext_addons.patches.v1_0 import (
 	backfill_intercompany_progress,
+	backfill_requested_by,
 	ensure_naming_series_map,
 	seed_item_group_series,
 	seed_stock_entry_series,
@@ -26,6 +27,7 @@ class MigrationCase(unittest.TestCase):
 			(buying_setup, "ensure_fields"),
 			(ic_setup, "ensure_fields"),
 			(backfill_intercompany_progress, "execute"),
+			(backfill_requested_by, "execute"),
 		):
 			p = mock.patch.object(target, name)
 			p.start()
@@ -145,13 +147,14 @@ class TestLifecycle(MigrationCase):
 				migration, "take_over_naming_series_map", lambda: order.append("takeover")
 			),
 			mock.patch.object(backfill_intercompany_progress, "execute", lambda: order.append("backfill")),
+			mock.patch.object(backfill_requested_by, "execute", lambda: order.append("requested_by")),
 			mock.patch.object(ic_setup, "ensure_fields", lambda: order.append("ic_fields")),
 			mock.patch.object(buying_setup, "ensure_fields", lambda: order.append("buying_fields")),
 		):
 			migration.after_sync()
 			migration.after_migrate()
 		seeds = ["item_group", "stock_entry", "mr_rows", "takeover"]
-		self.assertEqual(order, [*seeds, "backfill", *seeds, "buying_fields", "ic_fields"])
+		self.assertEqual(order, [*seeds, "backfill", "requested_by", *seeds, "buying_fields", "ic_fields"])
 
 	def test_second_migrate_after_old_resync_ends_on_new_owner(self):
 		migration.after_migrate()

@@ -85,7 +85,7 @@ class TestHooks(unittest.TestCase):
 				self.assertTrue((PKG / rel).is_file(), rel)
 		for asset in hooks.app_include_js:
 			self.assertTrue((PKG / "public" / asset.removeprefix("/assets/erpnext_addons/")).is_file(), asset)
-		dotted = [p for ev in hooks.doc_events.values() for p in ev.values()]
+		dotted = [p for ev in hooks.doc_events.values() for handler in ev.values() for p in _as_list(handler)]
 		dotted += _as_list(hooks.after_sync) + _as_list(hooks.after_migrate)
 		# a patch entry is a module path; Frappe calls its execute()
 		dotted += [f"{p}.execute" for p in (PKG / "patches.txt").read_text().split() if not p.startswith("[")]
