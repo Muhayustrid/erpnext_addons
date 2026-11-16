@@ -139,9 +139,10 @@ test("refresh on a draft PO replaces the core button", () => {
 	assert.deepEqual(dialog.labels, [{ index: 4, value: "Requested By" }]);
 });
 
-test("refresh on a submitted PO adds no picker button", () => {
+test("refresh on an intercompany submitted PO adds no picker button", () => {
 	const { handlers, mapped } = load();
 	const frm = fake_frm(1);
+	frm.doc.inter_company_order_reference = "PO-1-1";
 
 	handlers["Purchase Order"].refresh(frm);
 
