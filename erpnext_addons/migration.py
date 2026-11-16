@@ -25,9 +25,11 @@ def after_sync():
 
 def after_migrate():
 	_seed_then_take_over()
-	from erpnext_addons.intercompany.setup import ensure_fields
+	from erpnext_addons.buying.setup import ensure_fields as ensure_buying_fields
+	from erpnext_addons.intercompany.setup import ensure_fields as ensure_ic_fields
 
-	ensure_fields()
+	ensure_buying_fields()
+	ensure_ic_fields()
 
 
 def _seed_then_take_over():

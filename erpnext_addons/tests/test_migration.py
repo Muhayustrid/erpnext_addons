@@ -7,9 +7,10 @@ from erpnext_addons.tests.fakes import FakeFrappe, FakeValidationError, ensure_f
 
 ensure_frappe_importable()
 
-from erpnext_addons import migration  # noqa: E402
-from erpnext_addons.intercompany import setup as ic_setup  # noqa: E402
-from erpnext_addons.patches.v1_0 import (  # noqa: E402
+from erpnext_addons import migration
+from erpnext_addons.buying import setup as buying_setup
+from erpnext_addons.intercompany import setup as ic_setup
+from erpnext_addons.patches.v1_0 import (
 	backfill_intercompany_progress,
 	ensure_naming_series_map,
 	seed_item_group_series,
@@ -21,7 +22,11 @@ DT = "Naming Series Map"
 
 class MigrationCase(unittest.TestCase):
 	def setUp(self):
-		for target, name in ((ic_setup, "ensure_fields"), (backfill_intercompany_progress, "execute")):
+		for target, name in (
+			(buying_setup, "ensure_fields"),
+			(ic_setup, "ensure_fields"),
+			(backfill_intercompany_progress, "execute"),
+		):
 			p = mock.patch.object(target, name)
 			p.start()
 			self.addCleanup(p.stop)
@@ -141,11 +146,12 @@ class TestLifecycle(MigrationCase):
 			),
 			mock.patch.object(backfill_intercompany_progress, "execute", lambda: order.append("backfill")),
 			mock.patch.object(ic_setup, "ensure_fields", lambda: order.append("ic_fields")),
+			mock.patch.object(buying_setup, "ensure_fields", lambda: order.append("buying_fields")),
 		):
 			migration.after_sync()
 			migration.after_migrate()
 		seeds = ["item_group", "stock_entry", "mr_rows", "takeover"]
-		self.assertEqual(order, [*seeds, "backfill", *seeds, "ic_fields"])
+		self.assertEqual(order, [*seeds, "backfill", *seeds, "buying_fields", "ic_fields"])
 
 	def test_second_migrate_after_old_resync_ends_on_new_owner(self):
 		migration.after_migrate()
