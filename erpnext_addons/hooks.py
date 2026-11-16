@@ -9,7 +9,10 @@ required_apps = ["erpnext"]
 
 doctype_js = {
 	"Item": "public/js/item_form.js",
-	"Stock Entry": "public/js/stock_entry_form.js",
+	"Stock Entry": [
+		"public/js/stock_entry_form.js",
+		"public/js/stock_entry_related_docs.js",
+	],
 	"Material Request": "public/js/material_request_form.js",
 	"Sales Order": "public/js/order_update_pricing.js",
 	"Purchase Order": [

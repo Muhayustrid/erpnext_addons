@@ -47,6 +47,10 @@ class TestHooks(unittest.TestCase):
 			set(hooks.doctype_js),
 			{"Item", "Stock Entry", "Material Request", "Sales Order", "Purchase Order"},
 		)
+		self.assertEqual(
+			hooks.doctype_js["Stock Entry"],
+			["public/js/stock_entry_form.js", "public/js/stock_entry_related_docs.js"],
+		)
 		self.assertEqual(hooks.doctype_js["Sales Order"], "public/js/order_update_pricing.js")
 		self.assertEqual(
 			hooks.doctype_js["Purchase Order"],
