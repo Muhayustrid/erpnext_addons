@@ -8,6 +8,10 @@ import sys
 import types
 
 
+def _passthrough_whitelist(*args, **kwargs):
+	return lambda fn: fn
+
+
 def ensure_frappe_importable():
 	"""Register a bare `frappe` stub only when the real framework is absent."""
 	try:
@@ -21,6 +25,7 @@ def ensure_frappe_importable():
 		naming.get_default_naming_series = lambda doctype: None
 		document.Document = type("Document", (), {})
 		frappe.model, model.naming, model.document = model, naming, document
+		frappe.whitelist = _passthrough_whitelist
 		sys.modules.update(
 			{
 				"frappe": frappe,
