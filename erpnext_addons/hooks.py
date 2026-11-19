@@ -11,14 +11,18 @@ doctype_js = {
 	"Item": "public/js/item_form.js",
 	"Stock Entry": [
 		"public/js/stock_entry_form.js",
-		"public/js/stock_entry_related_docs.js",
+		"public/js/related_docs.js",
 	],
 	"Material Request": "public/js/material_request_form.js",
 	"Sales Order": "public/js/order_update_pricing.js",
 	"Purchase Order": [
 		"public/js/order_update_pricing.js",
 		"public/js/purchase_order_get_material_request.js",
+		"public/js/related_docs.js",
 	],
+	"Purchase Receipt": "public/js/related_docs.js",
+	"Purchase Invoice": "public/js/related_docs.js",
+	"Payment Entry": "public/js/related_docs.js",
 }
 
 app_include_js = ["/assets/erpnext_addons/js/list_settings_columns.js"]

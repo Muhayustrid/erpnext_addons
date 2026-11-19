@@ -45,11 +45,20 @@ class TestHooks(unittest.TestCase):
 	def test_hooks_contain_only_approved_doctypes(self):
 		self.assertEqual(
 			set(hooks.doctype_js),
-			{"Item", "Stock Entry", "Material Request", "Sales Order", "Purchase Order"},
+			{
+				"Item",
+				"Stock Entry",
+				"Material Request",
+				"Sales Order",
+				"Purchase Order",
+				"Purchase Receipt",
+				"Purchase Invoice",
+				"Payment Entry",
+			},
 		)
 		self.assertEqual(
 			hooks.doctype_js["Stock Entry"],
-			["public/js/stock_entry_form.js", "public/js/stock_entry_related_docs.js"],
+			["public/js/stock_entry_form.js", "public/js/related_docs.js"],
 		)
 		self.assertEqual(hooks.doctype_js["Sales Order"], "public/js/order_update_pricing.js")
 		self.assertEqual(
@@ -57,8 +66,11 @@ class TestHooks(unittest.TestCase):
 			[
 				"public/js/order_update_pricing.js",
 				"public/js/purchase_order_get_material_request.js",
+				"public/js/related_docs.js",
 			],
 		)
+		for dt in ("Purchase Receipt", "Purchase Invoice", "Payment Entry"):
+			self.assertEqual(hooks.doctype_js[dt], "public/js/related_docs.js")
 		naming = {"Item", "Stock Entry", "Material Request"}
 		self.assertEqual(set(hooks.doc_events), naming | IC_DOCTYPES)
 		for dt in naming:
@@ -83,7 +95,7 @@ class TestHooks(unittest.TestCase):
 		):
 			self.assertFalse(hasattr(hooks, name), name)
 		self.assertNotIn("Payment Entry", hooks.doc_events)
-		for dt in ("Sales Invoice", "Purchase Invoice", "Delivery Note", "Purchase Receipt"):
+		for dt in ("Sales Invoice", "Delivery Note"):
 			self.assertNotIn(dt, hooks.doctype_js)
 		source = (PKG / "hooks.py").read_text()
 		for old in ("intercompany_sync", "item_group_series", "stock_entry_series", "ic_payment_reference"):
