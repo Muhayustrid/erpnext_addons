@@ -45,32 +45,21 @@ class TestHooks(unittest.TestCase):
 	def test_hooks_contain_only_approved_doctypes(self):
 		self.assertEqual(
 			set(hooks.doctype_js),
-			{
-				"Item",
-				"Stock Entry",
-				"Material Request",
-				"Sales Order",
-				"Purchase Order",
-				"Purchase Receipt",
-				"Purchase Invoice",
-				"Payment Entry",
-			},
+			{"Item", "Stock Entry", "Material Request", "Sales Order", "Purchase Order"},
 		)
-		self.assertEqual(
-			hooks.doctype_js["Stock Entry"],
-			["public/js/stock_entry_form.js", "public/js/related_docs.js"],
-		)
+		self.assertEqual(hooks.doctype_js["Stock Entry"], "public/js/stock_entry_form.js")
 		self.assertEqual(hooks.doctype_js["Sales Order"], "public/js/order_update_pricing.js")
 		self.assertEqual(
 			hooks.doctype_js["Purchase Order"],
 			[
 				"public/js/order_update_pricing.js",
 				"public/js/purchase_order_get_material_request.js",
-				"public/js/related_docs.js",
 			],
 		)
-		for dt in ("Purchase Receipt", "Purchase Invoice", "Payment Entry"):
-			self.assertEqual(hooks.doctype_js[dt], "public/js/related_docs.js")
+		self.assertEqual(
+			set(hooks.override_doctype_dashboards),
+			{"Purchase Receipt", "Purchase Order", "Purchase Invoice", "Stock Entry", "Payment Entry"},
+		)
 		naming = {"Item", "Stock Entry", "Material Request"}
 		self.assertEqual(set(hooks.doc_events), naming | IC_DOCTYPES)
 		for dt in naming:
@@ -87,7 +76,6 @@ class TestHooks(unittest.TestCase):
 	def test_no_intercompany_sync_hooks_are_registered(self):
 		for name in (
 			"scheduler_events",
-			"override_doctype_dashboards",
 			"override_doctype_class",
 			"override_whitelisted_methods",
 			"doctype_list_js",
@@ -95,7 +83,7 @@ class TestHooks(unittest.TestCase):
 		):
 			self.assertFalse(hasattr(hooks, name), name)
 		self.assertNotIn("Payment Entry", hooks.doc_events)
-		for dt in ("Sales Invoice", "Delivery Note"):
+		for dt in ("Sales Invoice", "Purchase Invoice", "Delivery Note", "Purchase Receipt"):
 			self.assertNotIn(dt, hooks.doctype_js)
 		source = (PKG / "hooks.py").read_text()
 		for old in ("intercompany_sync", "item_group_series", "stock_entry_series", "ic_payment_reference"):
@@ -108,6 +96,7 @@ class TestHooks(unittest.TestCase):
 		for asset in hooks.app_include_js:
 			self.assertTrue((PKG / "public" / asset.removeprefix("/assets/erpnext_addons/")).is_file(), asset)
 		dotted = [p for ev in hooks.doc_events.values() for handler in ev.values() for p in _as_list(handler)]
+		dotted += list(hooks.override_doctype_dashboards.values())
 		dotted += _as_list(hooks.after_sync) + _as_list(hooks.after_migrate)
 		# a patch entry is a module path; Frappe calls its execute()
 		dotted += [f"{p}.execute" for p in (PKG / "patches.txt").read_text().split() if not p.startswith("[")]

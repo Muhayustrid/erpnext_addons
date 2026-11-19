@@ -9,20 +9,23 @@ required_apps = ["erpnext"]
 
 doctype_js = {
 	"Item": "public/js/item_form.js",
-	"Stock Entry": [
-		"public/js/stock_entry_form.js",
-		"public/js/related_docs.js",
-	],
+	"Stock Entry": "public/js/stock_entry_form.js",
 	"Material Request": "public/js/material_request_form.js",
 	"Sales Order": "public/js/order_update_pricing.js",
 	"Purchase Order": [
 		"public/js/order_update_pricing.js",
 		"public/js/purchase_order_get_material_request.js",
-		"public/js/related_docs.js",
 	],
-	"Purchase Receipt": "public/js/related_docs.js",
-	"Purchase Invoice": "public/js/related_docs.js",
-	"Payment Entry": "public/js/related_docs.js",
+}
+
+# Forward links (the current document holds the reference) cannot be counted by
+# the native dashboard, so these overrides add the cards and a custom counter.
+override_doctype_dashboards = {
+	"Purchase Receipt": "erpnext_addons.dashboards.purchase_receipt",
+	"Purchase Order": "erpnext_addons.dashboards.purchase_order",
+	"Purchase Invoice": "erpnext_addons.dashboards.purchase_invoice",
+	"Stock Entry": "erpnext_addons.dashboards.stock_entry",
+	"Payment Entry": "erpnext_addons.dashboards.payment_entry",
 }
 
 app_include_js = ["/assets/erpnext_addons/js/list_settings_columns.js"]

@@ -26,6 +26,8 @@ def ensure_frappe_importable():
 		document.Document = type("Document", (), {})
 		frappe.model, model.naming, model.document = model, naming, document
 		frappe.whitelist = _passthrough_whitelist
+		frappe.read_only = _passthrough_whitelist
+		frappe.parse_json = lambda value: value
 		sys.modules.update(
 			{
 				"frappe": frappe,
