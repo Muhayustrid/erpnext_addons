@@ -21,8 +21,11 @@ doctype_js = {
 # Forward links (the current document holds the reference) cannot be counted by
 # the native dashboard, so these overrides add the cards and a custom counter.
 override_doctype_dashboards = {
-	"Purchase Receipt": "erpnext_addons.dashboards.purchase_receipt",
 	"Purchase Order": "erpnext_addons.dashboards.purchase_order",
+	"Sales Order": "erpnext_addons.dashboards.sales_order",
+	"Delivery Note": "erpnext_addons.dashboards.delivery_note",
+	"Purchase Receipt": "erpnext_addons.dashboards.purchase_receipt",
+	"Sales Invoice": "erpnext_addons.dashboards.sales_invoice",
 	"Purchase Invoice": "erpnext_addons.dashboards.purchase_invoice",
 	"Stock Entry": "erpnext_addons.dashboards.stock_entry",
 	"Payment Entry": "erpnext_addons.dashboards.payment_entry",

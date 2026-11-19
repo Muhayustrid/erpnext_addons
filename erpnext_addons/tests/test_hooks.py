@@ -58,7 +58,16 @@ class TestHooks(unittest.TestCase):
 		)
 		self.assertEqual(
 			set(hooks.override_doctype_dashboards),
-			{"Purchase Receipt", "Purchase Order", "Purchase Invoice", "Stock Entry", "Payment Entry"},
+			{
+				"Purchase Order",
+				"Sales Order",
+				"Delivery Note",
+				"Purchase Receipt",
+				"Sales Invoice",
+				"Purchase Invoice",
+				"Stock Entry",
+				"Payment Entry",
+			},
 		)
 		naming = {"Item", "Stock Entry", "Material Request"}
 		self.assertEqual(set(hooks.doc_events), naming | IC_DOCTYPES)
