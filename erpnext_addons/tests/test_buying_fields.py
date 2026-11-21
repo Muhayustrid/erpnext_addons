@@ -28,6 +28,7 @@ class FieldDefsCase(unittest.TestCase):
 	def test_after_migrate_creates_the_field(self):
 		with mock.patch("erpnext_addons.migration._seed_then_take_over"), \
 		     mock.patch("erpnext_addons.intercompany.setup.ensure_fields"), \
+		     mock.patch("erpnext_addons.buying.paid.ensure_fields"), \
 		     mock.patch.object(setup, "ensure_fields") as ensure:
 			migration.after_migrate()
 		ensure.assert_called_once()

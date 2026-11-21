@@ -24,6 +24,10 @@ IC_EVENTS = {
 	"before_validate": "erpnext_addons.intercompany.events.guard",
 	"before_update_after_submit": "erpnext_addons.intercompany.events.guard",
 }
+GUARD_EVENTS = ("before_validate", "before_update_after_submit")
+PAID_GUARD = "erpnext_addons.buying.paid.guard"
+PAID_INVOICE = "erpnext_addons.buying.paid.on_invoice_change"
+PAID_PAYMENT = "erpnext_addons.buying.paid.on_payment_change"
 
 
 def _as_list(value):
@@ -70,12 +74,30 @@ class TestHooks(unittest.TestCase):
 			},
 		)
 		naming = {"Item", "Stock Entry", "Material Request"}
-		self.assertEqual(set(hooks.doc_events), naming | IC_DOCTYPES)
+		payments = {"Payment Entry", "Journal Entry"}
+		self.assertEqual(set(hooks.doc_events), naming | IC_DOCTYPES | payments)
 		for dt in naming:
 			self.assertEqual(set(hooks.doc_events[dt]), {"before_insert"})
 		# intercompany: progress tracking only (display fields), no sync or blocking hooks
-		for dt in IC_DOCTYPES:
+		for dt in IC_DOCTYPES - {"Purchase Order", "Purchase Receipt", "Purchase Invoice"}:
 			self.assertEqual(hooks.doc_events[dt], IC_EVENTS)
+		# % Paid: guard on the targets, recompute triggers on invoices and payments
+		for dt in ("Purchase Order", "Purchase Receipt"):
+			self.assertEqual(
+				hooks.doc_events[dt],
+				{**IC_EVENTS, **{ev: [IC_EVENTS[ev], PAID_GUARD] for ev in GUARD_EVENTS}},
+			)
+		self.assertEqual(
+			hooks.doc_events["Purchase Invoice"],
+			{**IC_EVENTS, "on_submit": PAID_INVOICE, "on_cancel": PAID_INVOICE},
+		)
+		for dt in payments:
+			self.assertEqual(hooks.doc_events[dt], {"on_submit": PAID_PAYMENT, "on_cancel": PAID_PAYMENT})
+		self.assertEqual(hooks.scheduler_events, {"daily": ["erpnext_addons.buying.paid.daily"]})
+		self.assertIn(
+			"erpnext_addons.patches.v1_0.backfill_per_paid",
+			(PKG / "patches.txt").read_text().split("[post_model_sync]")[1].split(),
+		)
 		self.assertEqual(hooks.app_include_js, ["/assets/erpnext_addons/js/list_settings_columns.js"])
 		self.assertEqual(len(hooks.fixtures), 1)
 		fixture = hooks.fixtures[0]
@@ -84,14 +106,13 @@ class TestHooks(unittest.TestCase):
 
 	def test_no_intercompany_sync_hooks_are_registered(self):
 		for name in (
-			"scheduler_events",
 			"override_doctype_class",
 			"override_whitelisted_methods",
 			"doctype_list_js",
 			"before_migrate",
 		):
 			self.assertFalse(hasattr(hooks, name), name)
-		self.assertNotIn("Payment Entry", hooks.doc_events)
+		self.assertNotIn("intercompany", json.dumps(hooks.doc_events["Payment Entry"]))
 		for dt in ("Sales Invoice", "Purchase Invoice", "Delivery Note", "Purchase Receipt"):
 			self.assertNotIn(dt, hooks.doctype_js)
 		source = (PKG / "hooks.py").read_text()
@@ -106,6 +127,7 @@ class TestHooks(unittest.TestCase):
 			self.assertTrue((PKG / "public" / asset.removeprefix("/assets/erpnext_addons/")).is_file(), asset)
 		dotted = [p for ev in hooks.doc_events.values() for handler in ev.values() for p in _as_list(handler)]
 		dotted += list(hooks.override_doctype_dashboards.values())
+		dotted += [p for paths in hooks.scheduler_events.values() for p in paths]
 		dotted += _as_list(hooks.after_sync) + _as_list(hooks.after_migrate)
 		# a patch entry is a module path; Frappe calls its execute()
 		dotted += [f"{p}.execute" for p in (PKG / "patches.txt").read_text().split() if not p.startswith("[")]

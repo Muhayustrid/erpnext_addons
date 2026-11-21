@@ -40,6 +40,11 @@ _IC_PROGRESS_EVENTS = {
 	"before_update_after_submit": "erpnext_addons.intercompany.events.guard",
 }
 
+_PAID_PAYMENT_EVENTS = {
+	"on_submit": "erpnext_addons.buying.paid.on_payment_change",
+	"on_cancel": "erpnext_addons.buying.paid.on_payment_change",
+}
+
 doc_events = {
 	"Item": {"before_insert": "erpnext_addons.overrides.item.set_naming_series"},
 	"Stock Entry": {"before_insert": "erpnext_addons.overrides.stock_entry.set_naming_series"},
@@ -60,7 +65,22 @@ doc_events = {
 			"Purchase Invoice",
 		)
 	},
+	"Payment Entry": dict(_PAID_PAYMENT_EVENTS),
+	"Journal Entry": dict(_PAID_PAYMENT_EVENTS),
 }
+
+# % Paid: keep the field system-owned on PO/PR, recompute when invoices or payments change
+for _dt in ("Purchase Order", "Purchase Receipt"):
+	for _event in ("before_validate", "before_update_after_submit"):
+		doc_events[_dt][_event] = [_IC_PROGRESS_EVENTS[_event], "erpnext_addons.buying.paid.guard"]
+doc_events["Purchase Invoice"].update(
+	{
+		"on_submit": "erpnext_addons.buying.paid.on_invoice_change",
+		"on_cancel": "erpnext_addons.buying.paid.on_invoice_change",
+	}
+)
+
+scheduler_events = {"daily": ["erpnext_addons.buying.paid.daily"]}
 
 fixtures = [
 	{
