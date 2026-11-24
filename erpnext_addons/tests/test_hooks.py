@@ -103,7 +103,17 @@ class TestHooks(unittest.TestCase):
 			"erpnext_addons.patches.v1_0.backfill_per_paid",
 			(PKG / "patches.txt").read_text().split("[post_model_sync]")[1].split(),
 		)
-		self.assertEqual(hooks.app_include_js, ["/assets/erpnext_addons/js/list_settings_columns.js"])
+		self.assertEqual(
+			hooks.app_include_js,
+			[
+				"/assets/erpnext_addons/js/list_settings_columns.js",
+				"/assets/erpnext_addons/js/quick_date_range.js",
+			],
+		)
+		self.assertEqual(
+			hooks.app_include_css,
+			["/assets/erpnext_addons/css/quick_date_range.css"],
+		)
 		self.assertEqual(len(hooks.fixtures), 1)
 		fixture = hooks.fixtures[0]
 		self.assertEqual(fixture["dt"], "Custom Field")
@@ -132,7 +142,7 @@ class TestHooks(unittest.TestCase):
 		for js in hooks.doctype_js.values():
 			for rel in _as_list(js):
 				self.assertTrue((PKG / rel).is_file(), rel)
-		for asset in hooks.app_include_js:
+		for asset in hooks.app_include_js + hooks.app_include_css:
 			self.assertTrue((PKG / "public" / asset.removeprefix("/assets/erpnext_addons/")).is_file(), asset)
 		dotted = [p for ev in hooks.doc_events.values() for handler in ev.values() for p in _as_list(handler)]
 		dotted += list(hooks.override_doctype_dashboards.values())

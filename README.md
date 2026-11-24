@@ -17,6 +17,9 @@ General ERPNext v16 enhancements for Roti Ropi. Replaces `intercompany_sync`
 - **P&L percentage**: `Show Percentage` filter and a `%` column on the Profit
   and Loss Statement, based on gross income (report templates use their first
   revenue section).
+- **Quick Date Range** on Journal Entry, Payment Entry, Purchase Invoice and
+  Sales Invoice list views: Posting Date presets for Today, Last 7 Days, This
+  Month, Last Month, This Year, or a custom range.
 
 Seeds only fill empty values; admin configuration is never overwritten.
 

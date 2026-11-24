@@ -31,7 +31,12 @@ override_doctype_dashboards = {
 	"Payment Entry": "erpnext_addons.dashboards.payment_entry",
 }
 
-app_include_js = ["/assets/erpnext_addons/js/list_settings_columns.js"]
+app_include_js = [
+	"/assets/erpnext_addons/js/list_settings_columns.js",
+	"/assets/erpnext_addons/js/quick_date_range.js",
+]
+
+app_include_css = ["/assets/erpnext_addons/css/quick_date_range.css"]
 
 # Profit and Loss Statement: opt-in percentage column, including Excel exports.
 override_whitelisted_methods = {

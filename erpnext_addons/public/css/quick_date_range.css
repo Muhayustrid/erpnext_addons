@@ -1,0 +1,10 @@
+/* Keep the native filter-bar size; extend the touch target to 44px. */
+.quick-date-range {
+	position: relative;
+}
+
+.quick-date-range::after {
+	content: "";
+	position: absolute;
+	inset: -8px -5px;
+}
