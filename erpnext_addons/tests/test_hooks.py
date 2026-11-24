@@ -33,6 +33,8 @@ REPORT_OVERRIDES = {
 	"frappe.desk.query_report.get_script": "erpnext_addons.overrides.query_report.get_script",
 }
 REPORT_PATCH = "erpnext_addons.overrides.query_report.patch"
+REPORT_PERF_PATCH = "erpnext_addons.reports.performance.patch"
+REPORT_PATCHES = [REPORT_PATCH, REPORT_PERF_PATCH]
 
 
 def _as_list(value):
@@ -135,8 +137,8 @@ class TestHooks(unittest.TestCase):
 
 	def test_report_percentage_hooks_are_registered(self):
 		self.assertEqual(getattr(hooks, "override_whitelisted_methods", {}), REPORT_OVERRIDES)
-		self.assertEqual(getattr(hooks, "before_request", []), [REPORT_PATCH])
-		self.assertEqual(getattr(hooks, "before_job", []), [REPORT_PATCH])
+		self.assertEqual(getattr(hooks, "before_request", []), REPORT_PATCHES)
+		self.assertEqual(getattr(hooks, "before_job", []), REPORT_PATCHES)
 
 	def test_hook_target_paths_exist(self):
 		for js in hooks.doctype_js.values():

@@ -44,8 +44,14 @@ override_whitelisted_methods = {
 	"frappe.desk.query_report.get_script": "erpnext_addons.overrides.query_report.get_script",
 }
 
-before_request = ["erpnext_addons.overrides.query_report.patch"]
-before_job = ["erpnext_addons.overrides.query_report.patch"]
+before_request = [
+	"erpnext_addons.overrides.query_report.patch",
+	"erpnext_addons.reports.performance.patch",
+]
+before_job = [
+	"erpnext_addons.overrides.query_report.patch",
+	"erpnext_addons.reports.performance.patch",
+]
 
 _IC_PROGRESS_EVENTS = {
 	"on_change": "erpnext_addons.intercompany.events.on_change",
