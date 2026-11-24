@@ -28,6 +28,11 @@ GUARD_EVENTS = ("before_validate", "before_update_after_submit")
 PAID_GUARD = "erpnext_addons.buying.paid.guard"
 PAID_INVOICE = "erpnext_addons.buying.paid.on_invoice_change"
 PAID_PAYMENT = "erpnext_addons.buying.paid.on_payment_change"
+REPORT_OVERRIDES = {
+	"frappe.desk.query_report.run": "erpnext_addons.overrides.query_report.run",
+	"frappe.desk.query_report.get_script": "erpnext_addons.overrides.query_report.get_script",
+}
+REPORT_PATCH = "erpnext_addons.overrides.query_report.patch"
 
 
 def _as_list(value):
@@ -107,7 +112,6 @@ class TestHooks(unittest.TestCase):
 	def test_no_intercompany_sync_hooks_are_registered(self):
 		for name in (
 			"override_doctype_class",
-			"override_whitelisted_methods",
 			"doctype_list_js",
 			"before_migrate",
 		):
@@ -119,6 +123,11 @@ class TestHooks(unittest.TestCase):
 		for old in ("intercompany_sync", "item_group_series", "stock_entry_series", "ic_payment_reference"):
 			self.assertNotIn(old, source)
 
+	def test_report_percentage_hooks_are_registered(self):
+		self.assertEqual(getattr(hooks, "override_whitelisted_methods", {}), REPORT_OVERRIDES)
+		self.assertEqual(getattr(hooks, "before_request", []), [REPORT_PATCH])
+		self.assertEqual(getattr(hooks, "before_job", []), [REPORT_PATCH])
+
 	def test_hook_target_paths_exist(self):
 		for js in hooks.doctype_js.values():
 			for rel in _as_list(js):
@@ -127,6 +136,9 @@ class TestHooks(unittest.TestCase):
 			self.assertTrue((PKG / "public" / asset.removeprefix("/assets/erpnext_addons/")).is_file(), asset)
 		dotted = [p for ev in hooks.doc_events.values() for handler in ev.values() for p in _as_list(handler)]
 		dotted += list(hooks.override_doctype_dashboards.values())
+		dotted += list(getattr(hooks, "override_whitelisted_methods", {}).values())
+		dotted += _as_list(getattr(hooks, "before_request", []))
+		dotted += _as_list(getattr(hooks, "before_job", []))
 		dotted += [p for paths in hooks.scheduler_events.values() for p in paths]
 		dotted += _as_list(hooks.after_sync) + _as_list(hooks.after_migrate)
 		# a patch entry is a module path; Frappe calls its execute()

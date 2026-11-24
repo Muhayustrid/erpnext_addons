@@ -14,6 +14,9 @@ General ERPNext v16 enhancements for Roti Ropi. Replaces `intercompany_sync`
   `Purchase Invoiced`) and a `Next Step` list column, the same for every document
   in a chain. Native statuses are untouched.
 - **List Settings column order** always wins over Frappe list layout columns.
+- **P&L percentage**: `Show Percentage` filter and a `%` column on the Profit
+  and Loss Statement, based on gross income (report templates use their first
+  revenue section).
 
 Seeds only fill empty values; admin configuration is never overwritten.
 

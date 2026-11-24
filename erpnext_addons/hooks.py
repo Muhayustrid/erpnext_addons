@@ -33,6 +33,15 @@ override_doctype_dashboards = {
 
 app_include_js = ["/assets/erpnext_addons/js/list_settings_columns.js"]
 
+# Profit and Loss Statement: opt-in percentage column, including Excel exports.
+override_whitelisted_methods = {
+	"frappe.desk.query_report.run": "erpnext_addons.overrides.query_report.run",
+	"frappe.desk.query_report.get_script": "erpnext_addons.overrides.query_report.get_script",
+}
+
+before_request = ["erpnext_addons.overrides.query_report.patch"]
+before_job = ["erpnext_addons.overrides.query_report.patch"]
+
 _IC_PROGRESS_EVENTS = {
 	"on_change": "erpnext_addons.intercompany.events.on_change",
 	"before_cancel": "erpnext_addons.intercompany.events.before_cancel",

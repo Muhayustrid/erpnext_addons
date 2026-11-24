@@ -22,9 +22,14 @@ def ensure_frappe_importable():
 		model = types.ModuleType("frappe.model")
 		naming = types.ModuleType("frappe.model.naming")
 		document = types.ModuleType("frappe.model.document")
+		desk = types.ModuleType("frappe.desk")
+		query_report = types.ModuleType("frappe.desk.query_report")
 		naming.get_default_naming_series = lambda doctype: None
 		document.Document = type("Document", (), {})
+		query_report.run = lambda *args, **kwargs: {}
+		query_report.get_script = lambda report_name: {}
 		frappe.model, model.naming, model.document = model, naming, document
+		frappe.desk, desk.query_report = desk, query_report
 		frappe.whitelist = _passthrough_whitelist
 		frappe.read_only = _passthrough_whitelist
 		frappe.parse_json = lambda value: value
@@ -34,6 +39,8 @@ def ensure_frappe_importable():
 				"frappe.model": model,
 				"frappe.model.naming": naming,
 				"frappe.model.document": document,
+				"frappe.desk": desk,
+				"frappe.desk.query_report": query_report,
 			}
 		)
 
