@@ -56,6 +56,9 @@ class TestHooks(unittest.TestCase):
 
 	def test_hooks_contain_only_approved_doctypes(self):
 		self.assertEqual(
+			hooks.doctype_tree_js, {"Account": "public/js/account_tree_company_search.js"}
+		)
+		self.assertEqual(
 			set(hooks.doctype_js),
 			{"Item", "Stock Entry", "Material Request", "Sales Order", "Purchase Order"},
 		)
@@ -147,6 +150,8 @@ class TestHooks(unittest.TestCase):
 		for js in hooks.doctype_js.values():
 			for rel in _as_list(js):
 				self.assertTrue((PKG / rel).is_file(), rel)
+		for rel in hooks.doctype_tree_js.values():
+			self.assertTrue((PKG / rel).is_file(), rel)
 		for asset in hooks.app_include_js + hooks.app_include_css:
 			self.assertTrue((PKG / "public" / asset.removeprefix("/assets/erpnext_addons/")).is_file(), asset)
 		dotted = [p for ev in hooks.doc_events.values() for handler in ev.values() for p in _as_list(handler)]

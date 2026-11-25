@@ -7,6 +7,10 @@ app_license = "mit"
 
 required_apps = ["erpnext"]
 
+doctype_tree_js = {
+	"Account": "public/js/account_tree_company_search.js",
+}
+
 doctype_js = {
 	"Item": "public/js/item_form.js",
 	"Stock Entry": "public/js/stock_entry_form.js",
