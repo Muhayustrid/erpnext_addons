@@ -11,6 +11,7 @@ from erpnext_addons import migration
 from erpnext_addons.buying import paid as buying_paid
 from erpnext_addons.buying import setup as buying_setup
 from erpnext_addons.intercompany import setup as ic_setup
+from erpnext_addons.overrides import sales_order as so_stock_guard
 from erpnext_addons.patches.v1_0 import (
 	backfill_intercompany_progress,
 	backfill_per_paid,
@@ -29,6 +30,7 @@ class MigrationCase(unittest.TestCase):
 			(buying_setup, "ensure_fields"),
 			(buying_paid, "ensure_fields"),
 			(ic_setup, "ensure_fields"),
+			(so_stock_guard, "ensure_fields"),
 			(backfill_intercompany_progress, "execute"),
 			(backfill_requested_by, "execute"),
 			(backfill_per_paid, "execute"),
@@ -154,6 +156,7 @@ class TestLifecycle(MigrationCase):
 			mock.patch.object(backfill_requested_by, "execute", lambda: order.append("requested_by")),
 			mock.patch.object(ic_setup, "ensure_fields", lambda: order.append("ic_fields")),
 			mock.patch.object(buying_setup, "ensure_fields", lambda: order.append("buying_fields")),
+			mock.patch.object(so_stock_guard, "ensure_fields", lambda: order.append("so_fields")),
 			mock.patch.object(backfill_per_paid, "execute", lambda: order.append("per_paid")),
 			mock.patch.object(buying_paid, "ensure_fields", lambda: order.append("paid_fields")),
 		):
@@ -165,10 +168,12 @@ class TestLifecycle(MigrationCase):
 				"backfill",
 				"requested_by",
 				"per_paid",
+				"so_fields",
 				*seeds,
 				"buying_fields",
 				"ic_fields",
 				"paid_fields",
+				"so_fields",
 			])
 
 	def test_second_migrate_after_old_resync_ends_on_new_owner(self):

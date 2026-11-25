@@ -7,6 +7,7 @@ ensure_frappe_importable()
 
 from erpnext_addons import migration
 from erpnext_addons.buying import setup
+from erpnext_addons.overrides import sales_order as so_stock_guard
 
 
 class FieldDefsCase(unittest.TestCase):
@@ -29,6 +30,7 @@ class FieldDefsCase(unittest.TestCase):
 		with mock.patch("erpnext_addons.migration._seed_then_take_over"), \
 		     mock.patch("erpnext_addons.intercompany.setup.ensure_fields"), \
 		     mock.patch("erpnext_addons.buying.paid.ensure_fields"), \
+		     mock.patch.object(so_stock_guard, "ensure_fields"), \
 		     mock.patch.object(setup, "ensure_fields") as ensure:
 			migration.after_migrate()
 		ensure.assert_called_once()

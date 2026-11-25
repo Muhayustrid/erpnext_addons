@@ -28,16 +28,23 @@ def after_sync():
 	backfill_requested_by.execute()
 	backfill_per_paid.execute()
 
+	# install-app runs after_sync but not after_migrate; create the field here too.
+	from erpnext_addons.overrides.sales_order import ensure_fields as ensure_sales_order_fields
+
+	ensure_sales_order_fields()
+
 
 def after_migrate():
 	_seed_then_take_over()
 	from erpnext_addons.buying.paid import ensure_fields as ensure_paid_fields
 	from erpnext_addons.buying.setup import ensure_fields as ensure_buying_fields
 	from erpnext_addons.intercompany.setup import ensure_fields as ensure_ic_fields
+	from erpnext_addons.overrides.sales_order import ensure_fields as ensure_sales_order_fields
 
 	ensure_buying_fields()
 	ensure_ic_fields()
 	ensure_paid_fields()
+	ensure_sales_order_fields()
 
 
 def _seed_then_take_over():

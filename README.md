@@ -20,6 +20,9 @@ General ERPNext v16 enhancements for Roti Ropi. Replaces `intercompany_sync`
 - **Quick Date Range** on Journal Entry, Payment Entry, Purchase Invoice and
   Sales Invoice list views: Posting Date presets for Today, Last 7 Days, This
   Month, Last Month, This Year, or a custom range.
+- **Opt-in Sales Order stock guard**: a Stock Settings checkbox rejects saving
+  a Sales Order when an item's stock is insufficient in its warehouse. Rows
+  delivered by the supplier (drop-ship) are skipped.
 - **Fast financial statements**: Profit and Loss and Balance Sheet scope their
   root accounts to the selected company; the Consolidated Financial Statement
   scopes them to the group and queries only the company that owns each root.

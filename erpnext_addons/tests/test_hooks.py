@@ -28,6 +28,7 @@ GUARD_EVENTS = ("before_validate", "before_update_after_submit")
 PAID_GUARD = "erpnext_addons.buying.paid.guard"
 PAID_INVOICE = "erpnext_addons.buying.paid.on_invoice_change"
 PAID_PAYMENT = "erpnext_addons.buying.paid.on_payment_change"
+SO_STOCK_GUARD = "erpnext_addons.overrides.sales_order.validate"
 REPORT_OVERRIDES = {
 	"frappe.desk.query_report.run": "erpnext_addons.overrides.query_report.run",
 	"frappe.desk.query_report.get_script": "erpnext_addons.overrides.query_report.get_script",
@@ -85,9 +86,11 @@ class TestHooks(unittest.TestCase):
 		self.assertEqual(set(hooks.doc_events), naming | IC_DOCTYPES | payments)
 		for dt in naming:
 			self.assertEqual(set(hooks.doc_events[dt]), {"before_insert"})
-		# intercompany: progress tracking only (display fields), no sync or blocking hooks
-		for dt in IC_DOCTYPES - {"Purchase Order", "Purchase Receipt", "Purchase Invoice"}:
+		# intercompany progress fields only on the remaining doctypes
+		for dt in IC_DOCTYPES - {"Purchase Order", "Purchase Receipt", "Purchase Invoice", "Sales Order"}:
 			self.assertEqual(hooks.doc_events[dt], IC_EVENTS)
+		# sales order: opt-in stock guard on save and submit
+		self.assertEqual(hooks.doc_events["Sales Order"], {**IC_EVENTS, "validate": SO_STOCK_GUARD})
 		# % Paid: guard on the targets, recompute triggers on invoices and payments
 		for dt in ("Purchase Order", "Purchase Receipt"):
 			self.assertEqual(

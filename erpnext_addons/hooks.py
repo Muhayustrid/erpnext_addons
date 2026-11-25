@@ -89,6 +89,11 @@ doc_events = {
 	"Journal Entry": dict(_PAID_PAYMENT_EVENTS),
 }
 
+# Opt-in: reject a Sales Order when its stock items are not fully available.
+# shortcut: validate does not run on update_after_submit, so qty increases made
+# through Update Items after submit are not re-checked. Revisit if that matters.
+doc_events["Sales Order"]["validate"] = "erpnext_addons.overrides.sales_order.validate"
+
 # % Paid: keep the field system-owned on PO/PR, recompute when invoices or payments change
 for _dt in ("Purchase Order", "Purchase Receipt"):
 	for _event in ("before_validate", "before_update_after_submit"):
