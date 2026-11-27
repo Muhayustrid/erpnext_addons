@@ -1,8 +1,9 @@
-"""Add the P&L percentage column through the query report API.
+"""Add the P&L percentage columns through the query report API.
 
 `run` post-processes the normal report response and `get_script` injects the
-`Show Percentage` filter. `patch` rebinds the module-level `run` so internal
-callers (Excel export, prepared reports) also get the column.
+`Show Monthly Percentage` and `Show Total Percentage` filters. `patch` rebinds
+the module-level `run` so internal callers (Excel export, prepared reports) also
+get the columns.
 """
 
 import frappe
@@ -16,7 +17,7 @@ _original_get_script = _query_report.get_script
 
 _patched = False
 
-SHOW_PERCENTAGE_FILTER_JS = """
+PERCENTAGE_FILTERS_JS = """
 // injected by erpnext_addons
 (function () {
 	const report_name = "Profit and Loss Statement";
@@ -24,14 +25,26 @@ SHOW_PERCENTAGE_FILTER_JS = """
 	if (!settings) return;
 
 	settings.filters = settings.filters || [];
-	if (!settings.filters.some((filter) => filter.fieldname === "show_percentage")) {
-		settings.filters.push({
-			fieldname: "show_percentage",
-			label: __("Show Percentage"),
+	const percentage_filters = [
+		{
+			fieldname: "show_monthly_percentage",
+			label: __("Show Monthly Percentage"),
 			fieldtype: "Check",
 			default: 1,
-		});
-	}
+			depends_on: "eval:doc.periodicity == 'Monthly'",
+		},
+		{
+			fieldname: "show_total_percentage",
+			label: __("Show Total Percentage"),
+			fieldtype: "Check",
+			default: 1,
+		},
+	];
+	percentage_filters.forEach((filter) => {
+		if (!settings.filters.some((existing) => existing.fieldname === filter.fieldname)) {
+			settings.filters.push(filter);
+		}
+	});
 })();
 """
 
@@ -49,10 +62,17 @@ def run(*args, **kwargs):
 	if filters is None and len(args) > 1:
 		filters = args[1]
 
-	if not percentage.is_enabled(filters):
+	# Growth and Margin views already replace the amounts with percentages.
+	filters_dict = percentage.as_dict(filters)
+	if filters_dict.get("selected_view") in ("Growth", "Margin"):
 		return response
 
-	return percentage.add_percentage_column(response)
+	monthly = percentage.is_monthly_enabled(filters) and filters_dict.get("periodicity") == "Monthly"
+	total = percentage.is_total_enabled(filters)
+	if not monthly and not total:
+		return response
+
+	return percentage.add_percentage_column(response, monthly=monthly, total=total)
 
 
 @frappe.whitelist()
@@ -60,7 +80,7 @@ def run(*args, **kwargs):
 def get_script(report_name):
 	response = _original_get_script(report_name)
 	if report_name in percentage.SUPPORTED_REPORTS and isinstance(response, dict):
-		response["script"] = (response.get("script") or "") + SHOW_PERCENTAGE_FILTER_JS
+		response["script"] = (response.get("script") or "") + PERCENTAGE_FILTERS_JS
 	return response
 
 

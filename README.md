@@ -14,9 +14,11 @@ General ERPNext v16 enhancements for Roti Ropi. Replaces `intercompany_sync`
   `Purchase Invoiced`) and a `Next Step` list column, the same for every document
   in a chain. Native statuses are untouched.
 - **List Settings column order** always wins over Frappe list layout columns.
-- **P&L percentage**: `Show Percentage` filter and a `%` column on the Profit
-  and Loss Statement, based on gross income (report templates use their first
-  revenue section).
+- **P&L percentage**: `Show Monthly Percentage` and `Show Total Percentage`
+  filters. With Monthly periodicity, each month gets its own `%` column beside
+  it (based on that month's gross income); the total `%` column uses the
+  report period's gross income. Report templates use their first revenue
+  section.
 - **Quick Date Range** on Journal Entry, Payment Entry, Purchase Invoice and
   Sales Invoice list views: Posting Date presets for Today, Last 7 Days, This
   Month, Last Month, This Year, or a custom range.

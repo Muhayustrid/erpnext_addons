@@ -15,16 +15,33 @@ def column(fieldname, fieldtype="Currency"):
 
 class TestFilters(unittest.TestCase):
 	def test_enabled_by_default(self):
-		self.assertTrue(percentage.is_enabled({}))
-		self.assertTrue(percentage.is_enabled(None))
-		self.assertTrue(percentage.is_enabled('{"show_percentage": 1}'))
+		self.assertTrue(percentage.is_monthly_enabled({}))
+		self.assertTrue(percentage.is_total_enabled({}))
+		self.assertTrue(percentage.is_monthly_enabled(None))
+		self.assertTrue(percentage.is_total_enabled(None))
 
-	def test_disabled(self):
-		self.assertFalse(percentage.is_enabled({"show_percentage": 0}))
-		self.assertFalse(percentage.is_enabled('{"show_percentage": "0"}'))
+	def test_disabled_independently(self):
+		self.assertFalse(percentage.is_monthly_enabled({"show_monthly_percentage": 0}))
+		self.assertTrue(percentage.is_total_enabled({"show_monthly_percentage": 0}))
+		self.assertFalse(percentage.is_total_enabled({"show_total_percentage": "0"}))
+		self.assertTrue(percentage.is_monthly_enabled({"show_total_percentage": "0"}))
+
+	def test_legacy_filter_disables_both(self):
+		self.assertFalse(percentage.is_monthly_enabled({"show_percentage": 0}))
+		self.assertFalse(percentage.is_total_enabled({"show_percentage": "0"}))
+
+	def test_legacy_filter_enables_both(self):
+		self.assertTrue(percentage.is_monthly_enabled('{"show_percentage": 1}'))
+		self.assertTrue(percentage.is_total_enabled('{"show_percentage": 1}'))
+
+	def test_new_filter_wins_over_legacy(self):
+		filters = {"show_percentage": 0, "show_monthly_percentage": 1, "show_total_percentage": 1}
+		self.assertTrue(percentage.is_monthly_enabled(filters))
+		self.assertTrue(percentage.is_total_enabled(filters))
 
 	def test_invalid_filter_value_keeps_default(self):
-		self.assertTrue(percentage.is_enabled("not json"))
+		self.assertTrue(percentage.is_monthly_enabled("not json"))
+		self.assertTrue(percentage.is_total_enabled("not json"))
 
 
 class TestValueField(unittest.TestCase):
@@ -93,7 +110,58 @@ class TestAddPercentageColumn(unittest.TestCase):
 			],
 		}
 
-	def test_appends_percentage_column_and_values(self):
+	def monthly_response(self):
+		return {
+			"columns": [
+				column("account", "Link"),
+				column("oct_2026"),
+				column("nov_2026"),
+				column("total"),
+			],
+			"result": [
+				{
+					"account": "Sales",
+					"oct_2026": 1000,
+					"nov_2026": 2000,
+					"total": 3000,
+					"is_group": 1,
+				},
+				{
+					"account": "Sales A",
+					"oct_2026": 800,
+					"nov_2026": 2000,
+					"total": 2800,
+					"is_group": 0,
+					"account_type": "Income Account",
+				},
+				{
+					"account": "COGS",
+					"oct_2026": -200,
+					"nov_2026": -500,
+					"total": -700,
+					"is_group": 0,
+					"account_type": "Cost of Goods Sold",
+				},
+				{
+					"account": "Total Income (Credit)",
+					"oct_2026": 600,
+					"nov_2026": 1500,
+					"total": 2100,
+					"opening_balance": 0,
+				},
+				{
+					"account": "Expense",
+					"oct_2026": 100,
+					"nov_2026": 300,
+					"total": 400,
+					"is_group": 0,
+					"account_type": "Expense Account",
+				},
+				{},
+			],
+		}
+
+	def test_appends_total_percentage_column_and_values(self):
 		response = percentage.add_percentage_column(self.response())
 
 		self.assertEqual(
@@ -106,12 +174,116 @@ class TestAddPercentageColumn(unittest.TestCase):
 		)
 		self.assertNotIn("percentage", response["result"][4])
 
-	def test_idempotent(self):
-		response = percentage.add_percentage_column(self.response())
+	def test_each_month_gets_its_own_percentage_column_beside_it(self):
+		response = percentage.add_percentage_column(self.monthly_response())
+
+		self.assertEqual(
+			[col["fieldname"] for col in response["columns"]],
+			[
+				"account",
+				"oct_2026",
+				"oct_2026_percentage",
+				"nov_2026",
+				"nov_2026_percentage",
+				"total",
+				"percentage",
+			],
+		)
+		self.assertEqual(response["columns"][2]["label"], "oct_2026 %")
+
+		rows = response["result"]
+		self.assertEqual(
+			[rows[0][key] for key in ("oct_2026_percentage", "nov_2026_percentage", "percentage")],
+			[125.0, 100.0, 107.14],
+		)
+		self.assertEqual(
+			[rows[1][key] for key in ("oct_2026_percentage", "nov_2026_percentage", "percentage")],
+			[100.0, 100.0, 100.0],
+		)
+		self.assertEqual(
+			[rows[2][key] for key in ("oct_2026_percentage", "nov_2026_percentage", "percentage")],
+			[-25.0, -25.0, -25.0],
+		)
+		self.assertEqual(
+			[rows[3][key] for key in ("oct_2026_percentage", "nov_2026_percentage", "percentage")],
+			[75.0, 75.0, 75.0],
+		)
+		self.assertNotIn("oct_2026_percentage", rows[5])
+
+	def test_monthly_only(self):
+		response = percentage.add_percentage_column(self.monthly_response(), monthly=True, total=False)
+
+		self.assertNotIn("percentage", [col["fieldname"] for col in response["columns"]])
+		self.assertEqual(response["columns"][2]["fieldname"], "oct_2026_percentage")
+		self.assertNotIn("percentage", response["result"][0])
+
+	def test_total_only(self):
+		response = percentage.add_percentage_column(self.monthly_response(), monthly=False, total=True)
+
+		self.assertEqual(
+			[col["fieldname"] for col in response["columns"]],
+			["account", "oct_2026", "nov_2026", "total", "percentage"],
+		)
+
+	def test_single_period_does_not_duplicate_the_total_column(self):
+		response = {
+			"columns": [column("account", "Link"), column("2026")],
+			"result": [
+				{"account": "Sales", "2026": 1000, "is_group": 0, "account_type": "Income Account"},
+				{"account": "Total Income (Credit)", "2026": 1000, "opening_balance": 0},
+			],
+		}
 		percentage.add_percentage_column(response)
 
-		self.assertEqual(len(response["columns"]), 3)
+		self.assertEqual(
+			[col["fieldname"] for col in response["columns"]],
+			["account", "2026", "percentage"],
+		)
 		self.assertEqual(response["result"][0]["percentage"], 100.0)
+
+	def test_single_month_with_total_column_gets_its_own_percentage(self):
+		response = {
+			"columns": [column("account", "Link"), column("oct_2026"), column("total")],
+			"result": [
+				{"account": "Sales", "oct_2026": 800, "total": 800, "is_group": 0, "account_type": "Income Account"},
+				{"account": "Total Income (Credit)", "oct_2026": 800, "total": 800, "opening_balance": 0},
+			],
+		}
+		percentage.add_percentage_column(response)
+
+		self.assertEqual(
+			[col["fieldname"] for col in response["columns"]],
+			["account", "oct_2026", "oct_2026_percentage", "total", "percentage"],
+		)
+		self.assertEqual(response["result"][0]["oct_2026_percentage"], 100.0)
+
+	def test_month_without_income_is_skipped(self):
+		response = self.monthly_response()
+		for row in response["result"]:
+			row["oct_2026"] = 0
+
+		percentage.add_percentage_column(response)
+
+		fieldnames = [col["fieldname"] for col in response["columns"]]
+		self.assertNotIn("oct_2026_percentage", fieldnames)
+		self.assertIn("nov_2026_percentage", fieldnames)
+
+	def test_segment_report_is_untouched(self):
+		response = {
+			"columns": [column("seg_1_account", "Link"), column("seg_1_total")],
+			"result": [
+				{"seg_1_account": "Sales", "seg_1_total": 1000, "segment_values": {"seg_1": {}}},
+			],
+		}
+		self.assertIs(percentage.add_percentage_column(response), response)
+		self.assertEqual(len(response["columns"]), 2)
+
+	def test_idempotent(self):
+		response = percentage.add_percentage_column(self.monthly_response())
+		percentage.add_percentage_column(response)
+
+		self.assertEqual(len(response["columns"]), 7)
+		self.assertEqual(response["result"][0]["percentage"], 107.14)
 
 	def test_percentage_rounds_to_two_decimals(self):
 		response = {
