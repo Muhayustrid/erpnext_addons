@@ -14,17 +14,19 @@ def column(fieldname, fieldtype="Currency"):
 
 
 class TestFilters(unittest.TestCase):
-	def test_enabled_by_default(self):
-		self.assertTrue(percentage.is_monthly_enabled({}))
-		self.assertTrue(percentage.is_total_enabled({}))
-		self.assertTrue(percentage.is_monthly_enabled(None))
-		self.assertTrue(percentage.is_total_enabled(None))
+	def test_disabled_when_filter_is_absent(self):
+		# Frappe's report filter collector drops falsy Check values, so an
+		# unchecked box reaches the backend as a missing key.
+		self.assertFalse(percentage.is_monthly_enabled({}))
+		self.assertFalse(percentage.is_total_enabled({}))
+		self.assertFalse(percentage.is_monthly_enabled(None))
+		self.assertFalse(percentage.is_total_enabled(None))
 
 	def test_disabled_independently(self):
 		self.assertFalse(percentage.is_monthly_enabled({"show_monthly_percentage": 0}))
-		self.assertTrue(percentage.is_total_enabled({"show_monthly_percentage": 0}))
+		self.assertTrue(percentage.is_total_enabled({"show_total_percentage": 1}))
 		self.assertFalse(percentage.is_total_enabled({"show_total_percentage": "0"}))
-		self.assertTrue(percentage.is_monthly_enabled({"show_total_percentage": "0"}))
+		self.assertTrue(percentage.is_monthly_enabled({"show_monthly_percentage": "1"}))
 
 	def test_legacy_filter_disables_both(self):
 		self.assertFalse(percentage.is_monthly_enabled({"show_percentage": 0}))
@@ -39,9 +41,9 @@ class TestFilters(unittest.TestCase):
 		self.assertTrue(percentage.is_monthly_enabled(filters))
 		self.assertTrue(percentage.is_total_enabled(filters))
 
-	def test_invalid_filter_value_keeps_default(self):
-		self.assertTrue(percentage.is_monthly_enabled("not json"))
-		self.assertTrue(percentage.is_total_enabled("not json"))
+	def test_invalid_filter_value_disables(self):
+		self.assertFalse(percentage.is_monthly_enabled("not json"))
+		self.assertFalse(percentage.is_total_enabled("not json"))
 
 
 class TestValueField(unittest.TestCase):

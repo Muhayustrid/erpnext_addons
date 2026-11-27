@@ -72,13 +72,45 @@ class TestRun(unittest.TestCase):
 		with mock.patch.object(query_report, "_original_run", return_value=monthly_pl_response()):
 			response = query_report.run(
 				report_name="Profit and Loss Statement",
-				filters={"periodicity": "Quarterly"},
+				filters={"periodicity": "Quarterly", "show_total_percentage": 1},
 			)
 
 		self.assertEqual(
 			[col["fieldname"] for col in response["columns"]],
 			["account", "oct_2026", "nov_2026", "total", "percentage"],
 		)
+
+	def test_unchecked_filters_are_absent_and_disable_both(self):
+		with mock.patch.object(query_report, "_original_run", return_value=monthly_pl_response()):
+			response = query_report.run(
+				report_name="Profit and Loss Statement",
+				filters={"periodicity": "Monthly"},
+			)
+
+		self.assertEqual(
+			[col["fieldname"] for col in response["columns"]],
+			["account", "oct_2026", "nov_2026", "total"],
+		)
+
+	def test_monthly_checked_total_unchecked(self):
+		with mock.patch.object(query_report, "_original_run", return_value=monthly_pl_response()):
+			response = query_report.run(
+				report_name="Profit and Loss Statement",
+				filters={"periodicity": "Monthly", "show_monthly_percentage": 1},
+			)
+
+		self.assertIn("oct_2026_percentage", [col["fieldname"] for col in response["columns"]])
+		self.assertNotIn("percentage", [col["fieldname"] for col in response["columns"]])
+
+	def test_total_checked_monthly_unchecked(self):
+		with mock.patch.object(query_report, "_original_run", return_value=monthly_pl_response()):
+			response = query_report.run(
+				report_name="Profit and Loss Statement",
+				filters={"periodicity": "Monthly", "show_total_percentage": 1},
+			)
+
+		self.assertNotIn("oct_2026_percentage", [col["fieldname"] for col in response["columns"]])
+		self.assertIn("percentage", [col["fieldname"] for col in response["columns"]])
 
 	def test_monthly_filter_can_be_disabled(self):
 		with mock.patch.object(query_report, "_original_run", return_value=monthly_pl_response()):

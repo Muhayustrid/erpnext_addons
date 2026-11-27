@@ -70,12 +70,16 @@ def _flt(value, precision=None) -> float:
 
 
 def is_monthly_enabled(filters) -> bool:
-	"""`show_monthly_percentage` defaults to 1; falls back to the legacy `show_percentage`."""
+	"""Only an explicitly sent truthy filter enables the column.
+
+	The desk drops unchecked Check filters from the request, so a missing key
+	means the box is unchecked.
+	"""
 	return _flag(filters, "show_monthly_percentage", "show_percentage")
 
 
 def is_total_enabled(filters) -> bool:
-	"""`show_total_percentage` defaults to 1; falls back to the legacy `show_percentage`."""
+	"""Only an explicitly sent truthy filter enables the column; see `is_monthly_enabled`."""
 	return _flag(filters, "show_total_percentage", "show_percentage")
 
 
@@ -84,7 +88,7 @@ def _flag(filters, *keys) -> bool:
 	for key in keys:
 		if key in data:
 			return bool(_cint(data[key]))
-	return True
+	return False
 
 
 def as_dict(filters) -> dict:
