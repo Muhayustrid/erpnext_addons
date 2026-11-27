@@ -17,33 +17,78 @@ class TestFilters(unittest.TestCase):
 	def test_disabled_when_filter_is_absent(self):
 		# Frappe's report filter collector drops falsy Check values, so an
 		# unchecked box reaches the backend as a missing key.
-		self.assertFalse(percentage.is_monthly_enabled({}))
+		self.assertFalse(percentage.is_period_enabled({}))
 		self.assertFalse(percentage.is_total_enabled({}))
-		self.assertFalse(percentage.is_monthly_enabled(None))
+		self.assertFalse(percentage.is_period_enabled(None))
 		self.assertFalse(percentage.is_total_enabled(None))
 
 	def test_disabled_independently(self):
-		self.assertFalse(percentage.is_monthly_enabled({"show_monthly_percentage": 0}))
+		self.assertFalse(percentage.is_period_enabled({"show_period_percentage": 0}))
 		self.assertTrue(percentage.is_total_enabled({"show_total_percentage": 1}))
 		self.assertFalse(percentage.is_total_enabled({"show_total_percentage": "0"}))
-		self.assertTrue(percentage.is_monthly_enabled({"show_monthly_percentage": "1"}))
+		self.assertTrue(percentage.is_period_enabled({"show_period_percentage": "1"}))
 
 	def test_legacy_filter_disables_both(self):
-		self.assertFalse(percentage.is_monthly_enabled({"show_percentage": 0}))
+		self.assertFalse(percentage.is_period_enabled({"show_percentage": 0}))
 		self.assertFalse(percentage.is_total_enabled({"show_percentage": "0"}))
 
 	def test_legacy_filter_enables_both(self):
-		self.assertTrue(percentage.is_monthly_enabled('{"show_percentage": 1}'))
+		self.assertTrue(percentage.is_period_enabled('{"show_percentage": 1}'))
 		self.assertTrue(percentage.is_total_enabled('{"show_percentage": 1}'))
 
+	def test_legacy_monthly_filter_enables_period_percentage(self):
+		# Prepared reports saved before the rename keep working.
+		self.assertTrue(percentage.is_period_enabled({"show_monthly_percentage": 1}))
+
 	def test_new_filter_wins_over_legacy(self):
-		filters = {"show_percentage": 0, "show_monthly_percentage": 1, "show_total_percentage": 1}
-		self.assertTrue(percentage.is_monthly_enabled(filters))
+		filters = {
+			"show_percentage": 0,
+			"show_monthly_percentage": 0,
+			"show_period_percentage": 1,
+			"show_total_percentage": 1,
+		}
+		self.assertTrue(percentage.is_period_enabled(filters))
 		self.assertTrue(percentage.is_total_enabled(filters))
 
 	def test_invalid_filter_value_disables(self):
-		self.assertFalse(percentage.is_monthly_enabled("not json"))
+		self.assertFalse(percentage.is_period_enabled("not json"))
 		self.assertFalse(percentage.is_total_enabled("not json"))
+
+	def test_hide_total_is_off_by_default(self):
+		self.assertFalse(percentage.is_total_hidden({}))
+		self.assertFalse(percentage.is_total_hidden(None))
+		self.assertTrue(percentage.is_total_hidden({"hide_total": 1}))
+		self.assertFalse(percentage.is_total_hidden({"hide_total": "0"}))
+
+
+class TestStripDisplayFilters(unittest.TestCase):
+	def test_drops_display_only_filters(self):
+		filters = {
+			"company": "C",
+			"periodicity": "Monthly",
+			"show_period_percentage": 1,
+			"show_monthly_percentage": 1,
+			"show_total_percentage": 1,
+			"show_percentage": 1,
+			"hide_total": 1,
+		}
+
+		self.assertEqual(
+			percentage.strip_display_filters(filters),
+			{"company": "C", "periodicity": "Monthly"},
+		)
+
+	def test_parses_json_string(self):
+		self.assertEqual(
+			percentage.strip_display_filters('{"company": "C", "hide_total": 1}'),
+			{"company": "C"},
+		)
+
+	def test_non_dict_is_returned_untouched(self):
+		self.assertIsNone(percentage.strip_display_filters(None))
+		self.assertEqual(percentage.strip_display_filters("not json"), "not json")
+		items = [1, 2]
+		self.assertIs(percentage.strip_display_filters(items), items)
 
 
 class TestValueField(unittest.TestCase):
@@ -212,22 +257,22 @@ class TestAddPercentageColumn(unittest.TestCase):
 		)
 		self.assertNotIn("oct_2026_percentage", rows[5])
 
-	def test_monthly_only(self):
-		response = percentage.add_percentage_column(self.monthly_response(), monthly=True, total=False)
+	def test_period_only(self):
+		response = percentage.add_percentage_column(self.monthly_response(), period=True, total=False)
 
 		self.assertNotIn("percentage", [col["fieldname"] for col in response["columns"]])
 		self.assertEqual(response["columns"][2]["fieldname"], "oct_2026_percentage")
 		self.assertNotIn("percentage", response["result"][0])
 
 	def test_total_only(self):
-		response = percentage.add_percentage_column(self.monthly_response(), monthly=False, total=True)
+		response = percentage.add_percentage_column(self.monthly_response(), period=False, total=True)
 
 		self.assertEqual(
 			[col["fieldname"] for col in response["columns"]],
 			["account", "oct_2026", "nov_2026", "total", "percentage"],
 		)
 
-	def test_single_period_does_not_duplicate_the_total_column(self):
+	def test_no_total_column_gives_every_amount_column_its_own_percentage(self):
 		response = {
 			"columns": [column("account", "Link"), column("2026")],
 			"result": [
@@ -239,9 +284,40 @@ class TestAddPercentageColumn(unittest.TestCase):
 
 		self.assertEqual(
 			[col["fieldname"] for col in response["columns"]],
-			["account", "2026", "percentage"],
+			["account", "2026", "2026_percentage"],
 		)
-		self.assertEqual(response["result"][0]["percentage"], 100.0)
+		self.assertEqual(response["result"][0]["2026_percentage"], 100.0)
+		self.assertNotIn("percentage", response["result"][0])
+
+	def test_yearly_periods_each_get_a_percentage(self):
+		response = {
+			"columns": [column("account", "Link"), column("2024"), column("2025"), column("2026")],
+			"result": [
+				{"account": "Sales", "2024": 100, "2025": 200, "2026": 300, "is_group": 0, "account_type": "Income Account"},
+			],
+		}
+		percentage.add_percentage_column(response)
+
+		self.assertEqual(
+			[col["fieldname"] for col in response["columns"]],
+			[
+				"account",
+				"2024",
+				"2024_percentage",
+				"2025",
+				"2025_percentage",
+				"2026",
+				"2026_percentage",
+			],
+		)
+		self.assertEqual(
+			[
+				response["result"][0][key]
+				for key in ("2024_percentage", "2025_percentage", "2026_percentage")
+			],
+			[100.0, 100.0, 100.0],
+		)
+		self.assertNotIn("percentage", response["result"][0])
 
 	def test_single_month_with_total_column_gets_its_own_percentage(self):
 		response = {
@@ -320,6 +396,47 @@ class TestAddPercentageColumn(unittest.TestCase):
 		}
 		percentage.add_percentage_column(response)
 		self.assertNotIn("percentage", response["columns"])
+
+
+class TestDropTotalColumns(unittest.TestCase):
+	def test_drops_total_and_total_percentage(self):
+		response = {
+			"columns": [
+				column("account", "Link"),
+				column("oct_2026"),
+				column("oct_2026_percentage", "Percent"),
+				column("total"),
+				column("percentage", "Percent"),
+			],
+			"result": [{"account": "Sales", "total": 100}],
+		}
+
+		percentage.drop_total_columns(response)
+
+		self.assertEqual(
+			[col["fieldname"] for col in response["columns"]],
+			["account", "oct_2026", "oct_2026_percentage"],
+		)
+		# the values stay; only the columns are hidden
+		self.assertEqual(response["result"][0]["total"], 100)
+
+	def test_keeps_the_percentage_column_when_there_is_no_total(self):
+		# Yearly has no Total column, so the % column is the period percentage.
+		response = {
+			"columns": [column("account", "Link"), column("2026"), column("percentage", "Percent")],
+			"result": [],
+		}
+
+		percentage.drop_total_columns(response)
+
+		self.assertEqual(
+			[col["fieldname"] for col in response["columns"]],
+			["account", "2026", "percentage"],
+		)
+
+	def test_without_total_column_is_a_noop(self):
+		response = {"columns": [column("account", "Link"), column("oct_2026")], "result": []}
+		self.assertIs(percentage.drop_total_columns(response), response)
 
 
 if __name__ == "__main__":

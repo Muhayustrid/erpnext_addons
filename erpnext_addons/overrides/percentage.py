@@ -12,6 +12,16 @@ SUPPORTED_REPORTS = ("Profit and Loss Statement",)
 PERCENTAGE_FIELDNAME = "percentage"
 PERCENTAGE_LABEL = "%"
 
+# Display-only checkboxes: they change the rendered columns, not the report data.
+# Prepared reports are keyed by their filters, so these must not create a new one.
+DISPLAY_ONLY_FILTERS = (
+	"show_period_percentage",
+	"show_monthly_percentage",
+	"show_total_percentage",
+	"show_percentage",
+	"hide_total",
+)
+
 # Account types that must not count towards the gross income (100%), even when
 # the accounts sit below the income root (e.g. cost of goods sold accounts).
 COST_ACCOUNT_TYPES = frozenset(
@@ -69,18 +79,23 @@ def _flt(value, precision=None) -> float:
 	return number
 
 
-def is_monthly_enabled(filters) -> bool:
+def is_period_enabled(filters) -> bool:
 	"""Only an explicitly sent truthy filter enables the column.
 
 	The desk drops unchecked Check filters from the request, so a missing key
-	means the box is unchecked.
+	means the box is unchecked. `show_monthly_percentage` is the old name kept
+	for prepared reports saved before the period rename.
 	"""
-	return _flag(filters, "show_monthly_percentage", "show_percentage")
+	return _flag(filters, "show_period_percentage", "show_monthly_percentage", "show_percentage")
 
 
 def is_total_enabled(filters) -> bool:
-	"""Only an explicitly sent truthy filter enables the column; see `is_monthly_enabled`."""
+	"""Only an explicitly sent truthy filter enables the column; see `is_period_enabled`."""
 	return _flag(filters, "show_total_percentage", "show_percentage")
+
+
+def is_total_hidden(filters) -> bool:
+	return _flag(filters, "hide_total")
 
 
 def _flag(filters, *keys) -> bool:
@@ -102,6 +117,14 @@ def as_dict(filters) -> dict:
 	return filters if isinstance(filters, dict) else {}
 
 
+def strip_display_filters(filters):
+	"""Drop the display-only keys used as the prepared report key; other filters pass through."""
+	data = as_dict(filters)
+	if not data:
+		return filters
+	return {key: value for key, value in data.items() if key not in DISPLAY_ONLY_FILTERS}
+
+
 def get_amount_fieldnames(columns) -> list[str]:
 	return [
 		column["fieldname"]
@@ -118,11 +141,6 @@ def get_value_fieldname(columns) -> str | None:
 	if "total" in fieldnames:
 		return "total"
 	return fieldnames[-1] if fieldnames else None
-
-
-def get_period_fieldnames(columns, value_field) -> list[str]:
-	"""Amount columns that belong to one period (every amount column except the total basis)."""
-	return [fieldname for fieldname in get_amount_fieldnames(columns) if fieldname != value_field]
 
 
 def is_classic_total_row(row) -> bool:
@@ -197,7 +215,7 @@ def is_segment_report(data) -> bool:
 	)
 
 
-def add_percentage_column(response: dict, monthly: bool = True, total: bool = True) -> dict:
+def add_percentage_column(response: dict, period: bool = True, total: bool = True) -> dict:
 	if not isinstance(response, dict):
 		return response
 
@@ -208,22 +226,43 @@ def add_percentage_column(response: dict, monthly: bool = True, total: bool = Tr
 	if not value_field or is_segment_report(data):
 		return response
 
-	if monthly:
-		period_fields = get_period_fieldnames(columns, value_field)
-		# Without a separate total column a single period is the total; do not duplicate it.
-		if period_fields and (value_field == "total" or len(period_fields) > 1):
-			for fieldname in period_fields:
-				_add_percentage_column(
-					columns,
-					data,
-					fieldname,
-					f"{fieldname}_percentage",
-					f"{get_column_label(columns, fieldname)} %",
-				)
+	has_total_column = value_field == "total"
+	period_fields = get_amount_fieldnames(columns)
+	if has_total_column:
+		period_fields = [fieldname for fieldname in period_fields if fieldname != "total"]
 
-	if total:
-		_add_percentage_column(columns, data, value_field, PERCENTAGE_FIELDNAME, PERCENTAGE_LABEL)
+	if period:
+		for fieldname in period_fields:
+			_add_percentage_column(
+				columns,
+				data,
+				fieldname,
+				f"{fieldname}_percentage",
+				f"{get_column_label(columns, fieldname)} %",
+			)
 
+	if total and has_total_column:
+		_add_percentage_column(columns, data, "total", PERCENTAGE_FIELDNAME, PERCENTAGE_LABEL)
+
+	return response
+
+
+def drop_total_columns(response: dict) -> dict:
+	"""Remove the Total columns; Yearly has no Total, so its % column is a period column."""
+	if not isinstance(response, dict):
+		return response
+
+	columns = response.get("columns") or []
+	fieldnames = {column.get("fieldname") for column in columns if isinstance(column, dict)}
+	if "total" not in fieldnames:
+		return response
+
+	response["columns"] = [
+		column
+		for column in columns
+		if not isinstance(column, dict)
+		or column.get("fieldname") not in ("total", PERCENTAGE_FIELDNAME)
+	]
 	return response
 
 

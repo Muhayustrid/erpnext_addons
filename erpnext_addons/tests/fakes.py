@@ -24,12 +24,21 @@ def ensure_frappe_importable():
 		document = types.ModuleType("frappe.model.document")
 		desk = types.ModuleType("frappe.desk")
 		query_report = types.ModuleType("frappe.desk.query_report")
+		core = types.ModuleType("frappe.core")
+		core_doctype = types.ModuleType("frappe.core.doctype")
+		prepared_report_pkg = types.ModuleType("frappe.core.doctype.prepared_report")
+		prepared_report = types.ModuleType("frappe.core.doctype.prepared_report.prepared_report")
+		prepared_report.make_prepared_report = lambda report_name, filters=None: filters
+		prepared_report.get_completed_prepared_report = lambda filters, user, report_name: filters
+		prepared_report.get_reports_in_queued_state = lambda report_name, filters: filters
 		naming.get_default_naming_series = lambda doctype: None
 		document.Document = type("Document", (), {})
 		query_report.run = lambda *args, **kwargs: {}
 		query_report.get_script = lambda report_name: {}
 		frappe.model, model.naming, model.document = model, naming, document
 		frappe.desk, desk.query_report = desk, query_report
+		frappe.core, core.doctype = core, core_doctype
+		core_doctype.prepared_report, prepared_report_pkg.prepared_report = prepared_report_pkg, prepared_report
 		frappe.whitelist = _passthrough_whitelist
 		frappe.read_only = _passthrough_whitelist
 		frappe.parse_json = lambda value: value
@@ -41,6 +50,10 @@ def ensure_frappe_importable():
 				"frappe.model.document": document,
 				"frappe.desk": desk,
 				"frappe.desk.query_report": query_report,
+				"frappe.core": core,
+				"frappe.core.doctype": core_doctype,
+				"frappe.core.doctype.prepared_report": prepared_report_pkg,
+				"frappe.core.doctype.prepared_report.prepared_report": prepared_report,
 			}
 		)
 
